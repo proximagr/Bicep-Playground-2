@@ -167,7 +167,7 @@ module AzFirewall 'modules/AzFirewall.bicep' = if (deployFirewall) {
   }
 }
 
-module AppGw 'modules/appGW.bicep' = {
+module AppGw 'modules/applGW.bicep' = {
   scope: resourceGroup(firstRG.name)
   name: 'AppGW-deployment'
   params: {
