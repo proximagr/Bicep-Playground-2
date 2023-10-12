@@ -12,4 +12,4 @@ I use a randomizer based on deployment name for the resource names
 
 Script to deploy from Cli with parameters:
 
-az deployment sub create --template-file main.bicep --name deplname --parameters deployFirewall=true deployStorage=true deployAppSQLKv=true deployAppGw=true sqlpassword=############
+az deployment sub create --template-file main.bicep --name deplname --location azureregion --parameters deployFirewall=true deployStorage=true deployAppSQLKv=true deployAppGw=true sqlpassword=############
