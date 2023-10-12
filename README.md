@@ -7,6 +7,8 @@ It will ask to deploy:
   * deployAppSQLKv 
   * deployAppGw (WAF v2)
 
+With the deployAppSQLKv will deploy an App Service, an Azure SQL and a KeyVault to Store the SQL connection string
+
 This script runs on a subscription level, it will create the Resource Group.
 I use a randomizer based on deployment name for the resource names
 
