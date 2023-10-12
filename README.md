@@ -4,8 +4,8 @@ Bicep script to create multiple resources.
 It will ask to deploy:
   * deployFirewall
   * deployStorage
-  * deployAppSQLKv
-  * deployAppGw
+  * deployAppSQLKv 
+  * deployAppGw (WAF v2)
 
 This script runs on a subscription level, it will create the Resource Group.
 I use a randomizer based on deployment name for the resource names
