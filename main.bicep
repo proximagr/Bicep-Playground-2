@@ -1,36 +1,36 @@
 targetScope = 'subscription'
+param location string = deployment().location
 
+//select the resources to deploy
 param deployFirewall bool
 param deployStorage bool
 param deployAppSQLKv bool
 param deployAppGw bool
 param deployVM bool
-param location string = deployment().location
 
+//randomizer
+param randomvalue string = substring((uniqueString(deployment().name)), 0, 5)
+
+//set the tags
 var tags = {
   Region: location
   Deployment:deployment().name
+  RandomValue: randomvalue
 }
 
-param randomvalue string = uniqueString(deployment().name)
-
-@description('Create resource names based to the deployment name')
+//create random names
 var rgname = 'rg-${randomvalue}'
-
-//Storage
 var storageName = 'sa${randomvalue}'
-
-//Vnet-NSG
 var vnetName = 'vnet-${randomvalue}'
 var mynsgname = 'nsg-${randomvalue}'
 
-//AzuereSQL
+//AzuereSQL parameters
 var sqlservername = 'sql${randomvalue}'
 var sqldbname = 'db${randomvalue}'
 param sqlserveradmin string = 'padmin'
 param sqlConnectionString string = 'sqlConnectionString'
 
-//WebApp
+//WebApp parameters
 var webfarmsku = {
   name: 'f1'
   capacity: 1
@@ -48,7 +48,7 @@ var siteConfig = {
   ]
 }
 
-//KeyVault
+//KeyVault 
 var kvname = 'kv-${randomvalue}'
 
 //AzFirewall
@@ -68,9 +68,11 @@ param vmName string = 'vm${randomvalue}'
   ])
 param vmSize string
 
-//password
+//passwords
 @secure()
-param vmsqlpassword string
+param vmpassword string
+@secure()
+param sqlpassword string
 
 resource firstRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgname
@@ -108,7 +110,7 @@ module mySQLServer 'modules/PaaS-SQL.bicep' = if (deployAppSQLKv) {
   params: {
     location: location
     sqldbname: sqldbname
-    sqlpassword: vmsqlpassword
+    sqlpassword: sqlpassword
     sqlserveradmin: sqlserveradmin
     sqlservername: sqlservername
     tags: tags
@@ -123,7 +125,7 @@ module myKeyVAult 'modules/KeyVault.bicep' = if (deployAppSQLKv) {
     kvname: kvname
     location: location
     tags: tags
-    sqlConnectionString: deployAppSQLKv ? 'Data Source=tcp:${mySQLServer.outputs.fullyQualifiedDomainName}, 1433;Initial Catalog=${mySQLServer.outputs.databaseName};User Id=${sqlserveradmin};Password=${vmsqlpassword};' : ''
+    sqlConnectionString: deployAppSQLKv ? 'Data Source=tcp:${mySQLServer.outputs.fullyQualifiedDomainName}, 1433;Initial Catalog=${mySQLServer.outputs.databaseName};User Id=${sqlserveradmin};Password=${sqlpassword};' : ''
     accessPolicies: [
       {
         tenantId: deployAppSQLKv ? WebApp.outputs.identity.tenantId : ''
@@ -184,7 +186,7 @@ module VM 'modules/VM.bicep' = if (deployVM) {
   params: {
     location: location
     tags: tags
-    adminPassword: vmsqlpassword
+    adminPassword: vmpassword
     adminUserName: adminUserName
     vmName: vmName
     vmSize: vmSize
