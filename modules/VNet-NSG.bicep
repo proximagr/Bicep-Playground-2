@@ -12,7 +12,10 @@ param deployFirewall bool
 var subnet0Name = deployFirewall ? 'AzureFirewallSubnet' : 'Subnet-0' 
 
 param deployAppGw bool
-var subnet1Name = deployAppGw ? 'AppGatewaySubnet' : 'Subnet-1' 
+var subnet1Name = deployAppGw ? 'AppGatewaySubnet' : 'Subnet-1'
+
+param deployVM bool
+var subnet2Name = deployVM ? 'VMsSubnet' : 'Subnet-2'
 
 resource mynsg 'Microsoft.Network/networkSecurityGroups@2021-08-01' = {
   name: mynsgname
@@ -103,7 +106,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2021-08-01' = {
         }
       }
       {
-        name: 'Subnet-2'
+        name: subnet2Name
         properties: {
           addressPrefix: '10.0.2.0/24'
           networkSecurityGroup:{
@@ -115,4 +118,5 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2021-08-01' = {
   }
 }
 
-output AppGwSubnetId string = virtualNetwork.properties.subnets[2].id
+output AppGwSubnetId string = virtualNetwork.properties.subnets[1].id
+output VMsSubenetId string = virtualNetwork.properties.subnets[2].id

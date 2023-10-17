@@ -4,23 +4,8 @@ param deployFirewall bool
 param deployStorage bool
 param deployAppSQLKv bool
 param deployAppGw bool
-
-@allowed([
-  'swedencentral'
-  'northeurope'
-  'uksouth'
-  'westeurope'
-  'francecentral'
-  'germanywestcentral'
-  'norwayeast'
-  'switzerlandnorth'
-  'francesouth'
-  'germanynorth'
-  'norwaywest'
-  'switzerlandwest'
-  'ukwest'
-])
-param location string = 'germanywestcentral'
+param deployVM bool
+param location string = deployment().location
 
 var tags = {
   Region: location
@@ -43,8 +28,6 @@ var mynsgname = 'nsg-${randomvalue}'
 var sqlservername = 'sql${randomvalue}'
 var sqldbname = 'db${randomvalue}'
 param sqlserveradmin string = 'padmin'
-@secure()
-param sqlpassword string
 param sqlConnectionString string = 'sqlConnectionString'
 
 //WebApp
@@ -75,6 +58,19 @@ var fwpolicyname = 'fwp-${randomvalue}'
 //AppGW
 var AppGwName = 'appGw-${randomvalue}'
 
+//VMs parameters
+param adminUserName string = 'padmin'
+param vmName string = 'vm${randomvalue}'
+@allowed([
+    'Standard_B2s'
+    'Standard_B2ls_v2'
+    'Standard_D2s_v5'
+  ])
+param vmSize string
+
+//password
+@secure()
+param vmsqlpassword string
 
 resource firstRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgname
@@ -92,6 +88,7 @@ module vnetnsg 'modules/VNet-NSG.bicep' = {
     mynsgname: mynsgname
     deployFirewall: deployFirewall
     deployAppGw: deployAppGw
+    deployVM: deployVM
   }
 }
 
@@ -111,7 +108,7 @@ module mySQLServer 'modules/PaaS-SQL.bicep' = if (deployAppSQLKv) {
   params: {
     location: location
     sqldbname: sqldbname
-    sqlpassword: sqlpassword
+    sqlpassword: vmsqlpassword
     sqlserveradmin: sqlserveradmin
     sqlservername: sqlservername
     tags: tags
@@ -126,7 +123,7 @@ module myKeyVAult 'modules/KeyVault.bicep' = if (deployAppSQLKv) {
     kvname: kvname
     location: location
     tags: tags
-    sqlConnectionString: deployAppSQLKv ? 'Data Source=tcp:${mySQLServer.outputs.fullyQualifiedDomainName}, 1433;Initial Catalog=${mySQLServer.outputs.databaseName};User Id=${sqlserveradmin};Password=${sqlpassword};' : ''
+    sqlConnectionString: deployAppSQLKv ? 'Data Source=tcp:${mySQLServer.outputs.fullyQualifiedDomainName}, 1433;Initial Catalog=${mySQLServer.outputs.databaseName};User Id=${sqlserveradmin};Password=${vmsqlpassword};' : ''
     accessPolicies: [
       {
         tenantId: deployAppSQLKv ? WebApp.outputs.identity.tenantId : ''
@@ -167,7 +164,7 @@ module AzFirewall 'modules/AzFirewall.bicep' = if (deployFirewall) {
   }
 }
 
-module AppGw 'modules/applGW.bicep' = {
+module AppGw 'modules/applGW.bicep' = if (deployAppGw) {
   scope: resourceGroup(firstRG.name)
   name: 'AppGW-deployment'
   params: {
@@ -175,5 +172,22 @@ module AppGw 'modules/applGW.bicep' = {
     location: location
     tags: tags
     appGwSubnetID: vnetnsg.outputs.AppGwSubnetId
+  }
+}
+
+module VM 'modules/VM.bicep' = if (deployVM) {
+  scope: resourceGroup(firstRG.name)
+  name: 'VM-deployment'
+  dependsOn: [
+    vnetnsg
+  ]
+  params: {
+    location: location
+    tags: tags
+    adminPassword: vmsqlpassword
+    adminUserName: adminUserName
+    vmName: vmName
+    vmSize: vmSize
+    vmSubnetRef: vnetnsg.outputs. VMsSubenetId
   }
 }
