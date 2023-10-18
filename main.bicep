@@ -4,9 +4,27 @@ param location string = deployment().location
 //select the resources to deploy
 param deployFirewall bool
 param deployStorage bool
+@description('Before deploying SQL check the main.bicep to change the sqlpassword')
 param deployAppSQLKv bool
 param deployAppGw bool
+@description('Before deploying a VM check the main.bicep to change the vmpassword & size')
 param deployVM bool
+
+//Parameters to take care
+@description('SQL Password')
+@secure()
+param sqlpassword string = ''
+@description('VM Admin Password')
+@secure()
+param vmpassword string = ''
+@allowed([
+  'Standard_B2s'
+  'Standard_B2ls_v2'
+  'Standard_D2s_v5'
+])
+@description('The size of the VM, it defaults to "Standard_B2s')
+param vmSize string = 'Standard_B2s' 
+@description('If NOT deploying a VM, leave it blank, otherwise change it to a strong password')
 
 //randomizer
 param randomvalue string = substring((uniqueString(deployment().name)), 0, 5)
@@ -20,7 +38,7 @@ var tags = {
 
 //create random names
 var rgname = 'rg-${randomvalue}'
-var storageName = 'sa${randomvalue}'
+var storageName = 'str${randomvalue}'
 var vnetName = 'vnet-${randomvalue}'
 var mynsgname = 'nsg-${randomvalue}'
 
@@ -61,19 +79,8 @@ var AppGwName = 'appGw-${randomvalue}'
 //VMs parameters
 param adminUserName string = 'padmin'
 param vmName string = 'vm${randomvalue}'
-@allowed([
-    'Standard_B2s'
-    'Standard_B2ls_v2'
-    'Standard_D2s_v5'
-  ])
-param vmSize string
 
-//passwords
-@secure()
-param vmpassword string
-@secure()
-param sqlpassword string
-
+//start resource deployment
 resource firstRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgname
   location: location
@@ -177,7 +184,7 @@ module AppGw 'modules/applGW.bicep' = if (deployAppGw) {
   }
 }
 
-module VM 'modules/VM.bicep' = if (deployVM) {
+module VM 'modules/VM.bicep' = if (deployVM && !empty(vmpassword)) {
   scope: resourceGroup(firstRG.name)
   name: 'VM-deployment'
   dependsOn: [
